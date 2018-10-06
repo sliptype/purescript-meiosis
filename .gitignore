@@ -9,3 +9,6 @@
 /.psa*
 
 .DS_Store
+
+# Compiled
+app.js

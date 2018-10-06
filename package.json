@@ -1,0 +1,12 @@
+{
+  "name": "purescript-meiosis",
+  "version": "0.0.0",
+  "description": "A purescript implementation of the Meiosis pattern",
+  "main": "index.js",
+  "repository": "git@github.com:sliptype/purescript-meiosis.git",
+  "author": "sliptype@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "snabbdom": "^0.7.2"
+  }
+}
