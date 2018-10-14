@@ -20,8 +20,8 @@ emptyVNodeData =
 initialState :: State
 initialState = 10
 
-update :: Observable State
-update = interval 1000 # map (\s -> s + 1) # startWith initialState
+state :: Observable State
+state = interval 1000 # map (\s -> initialState + s)
 
 view :: State -> VNodeProxy
 view s = h "div" emptyVNodeData
@@ -31,10 +31,12 @@ view s = h "div" emptyVNodeData
 
 main :: Effect Unit
 main = do
+  -- Render the initial state
   vnode <- patchInitialSelector "#app" $ view initialState
-  update # subscribe vnode
+  -- Map state to view and attach a handler to re-render
+  state # map view # subscribe vnode
 
-subscribe :: VNodeProxy -> Observable State -> Effect Unit
+subscribe :: VNodeProxy -> Observable VNodeProxy -> Effect Unit
 subscribe vnode obs = do
-  sub <- extract (obs # map view # subscribeNext (patch vnode))
+  sub <- extract (obs # subscribeNext (patch vnode))
   pure unit
