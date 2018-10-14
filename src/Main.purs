@@ -2,9 +2,11 @@ module Main where
 
 import Prelude
 import Effect (Effect)
+import Control.Comonad (extract)
 import Data.Maybe (Maybe(..))
-import Data.Map (empty, singleton)
-import Snabbdom (VNodeProxy, VNodeData, h, patchInitialSelector, text, toVNodeEventObject, toVNodeHookObjectProxy)
+import Data.Map (empty)
+import Snabbdom (VNodeProxy, VNodeData, h, patchInitialSelector, patch, text, toVNodeEventObject, toVNodeHookObjectProxy)
+import RxJS.Observable
 
 type State = Int
 
@@ -12,11 +14,14 @@ emptyVNodeData :: VNodeData
 emptyVNodeData =
   { attrs : empty
   , on : toVNodeEventObject empty
-  , hook : toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing}
+  , hook : toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
   }
 
 initialState :: State
 initialState = 10
+
+update :: Observable State
+update = interval 1000 # map (\s -> s + 1) # startWith initialState
 
 view :: State -> VNodeProxy
 view s = h "div" emptyVNodeData
@@ -26,4 +31,10 @@ view s = h "div" emptyVNodeData
 
 main :: Effect Unit
 main = do
-  patchInitialSelector "#app" $ view initialState
+  vnode <- patchInitialSelector "#app" $ view initialState
+  update # subscribe vnode
+
+subscribe :: VNodeProxy -> Observable State -> Effect Unit
+subscribe vnode obs = do
+  sub <- extract (obs # map view # subscribeNext (patch vnode))
+  pure unit

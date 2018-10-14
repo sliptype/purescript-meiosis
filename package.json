@@ -7,6 +7,8 @@
   "author": "sliptype@gmail.com",
   "license": "MIT",
   "dependencies": {
+    "rxjs": "^6.3.3",
+    "rxjs-compat": "^6.3.3",
     "snabbdom": "^0.7.2"
   }
 }
