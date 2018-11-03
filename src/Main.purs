@@ -1,8 +1,6 @@
 module Main where
 
 import Prelude
-import RxJS.Observable
-import RxJS.Subscriber
 
 import Control.Comonad (extract)
 import Data.Maybe (Maybe(..))
@@ -10,13 +8,29 @@ import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Foreign.Object (Object, empty, insert, singleton)
-import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObject, VNodeProxy(..), h, patch, patchInitialSelector, text, toVNode, toVNodeEventObject, toVNodeHookObjectProxy)
+
 import Web.DOM.Document (Document, toNonElementParentNode, url)
 import Web.DOM.Element (Element, id)
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.HTML (window)
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
+
+import RxJS.Observable
+import RxJS.Subscriber
+import Snabbdom
+  ( VNodeData
+  , VNodeEventObject
+  , VNodeHookObjectProxy
+  , VNodeProxy(..)
+  , h
+  , patch
+  , patchInitialSelector
+  , text
+  , toVNode
+  , toVNodeEventObject
+  , toVNodeHookObjectProxy
+  )
 
 -- TODO: Add to snabbdom
 type VNodeAttrsObject = Object String
@@ -27,7 +41,7 @@ type Driver a b = Observable a -> Observable b
 
 foreign import run :: forall a b. (Sources -> Sinks) -> Object (Driver a b) -> Effect Unit
 
-foreign import createSubjectDriver :: forall a b c. Driver a b -> Driver a c
+foreign import createSubjectDriver :: forall a b. (Observable a -> Effect Unit) -> Driver a b
 
 -- domDriver
 type ActionCreator = forall e. Action -> (e -> Effect Unit)
@@ -51,12 +65,8 @@ subscribe vnode obs = do
   sub <- extract (obs # subscribeNext (patch vnode))
   pure unit
 
-domDriver :: Effect (Driver VNodeProxy Action)
-domDriver v = do
-  element <- getElement "#app"
-  case element of
-    Just element -> pure $ createSubjectDriver $ subscribe (toVNode element) v
-    Nothing -> log "Element not found"
+domDriver :: Element -> Observable VNodeProxy -> Effect Unit
+domDriver e v = subscribe (toVNode e) v
 
 emptyVNodeData :: VNodeData
 emptyVNodeData =
@@ -65,7 +75,7 @@ emptyVNodeData =
   , hook : toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
   }
 
-createVNodeData :: VNodeAttrsObject -> VNodeEventObject -> VNodeHookObject
+createVNodeData :: VNodeAttrsObject -> VNodeEventObject -> VNodeHookObjectProxy -> VNodeData
 createVNodeData attrs events hooks =
   { attrs : attrs
   , on : events
@@ -89,17 +99,27 @@ view a s =
                  } [text "Increase"]
   ]
 
-reducer :: State -> Action -> State
-reducer s _a = s + 1
+reducer :: Action -> State -> State
+reducer _a s = s + 1
+
+noOp :: Action
+noOp =
+  { name: "noop"
+  , value: 0
+}
 
 app :: Sources -> Sinks
 app { dom: a } = let act = createActionCreator a in
   { dom: a
-      # startWith 0
-      # scan reducer
-      # map (view a)
+      # startWith noOp
+      # scan reducer 0
+      # map (view act)
   }
 
 main :: Effect Unit
-main = run app (singleton "dom" domDriver)
+main = do
+  element <- getElement "app"
+  case element of
+    Just element -> run app (singleton "dom" (createSubjectDriver (domDriver element)))
+    Nothing -> log "Element not found"
 
