@@ -41,9 +41,9 @@ type Driver a b = Observable a -> Observable b
 
 foreign import run :: forall a b. (Sources -> Sinks) -> Object (Driver a b) -> Effect Unit
 
-foreign import createSubjectDriver :: forall a b. (Observable a -> Effect Unit) -> Driver a b
-
 -- domDriver
+foreign import createDomDriver :: String -> Driver VNodeProxy Action
+
 type ActionCreator = forall e. Action -> (e -> Effect Unit)
 
 foreign import createActionCreator :: Observable Action -> ActionCreator
@@ -54,19 +54,26 @@ type Action = {
   value :: Int
 }
 
-getElement :: String -> Effect (Maybe Element)
-getElement selector = do
-  doc <- liftEffect $ toDocument <$> (document =<< window)
-  element <- getElementById selector $ toNonElementParentNode doc
-  pure element
+-- TODO: move into purescript
+-- How to run Observable Effect ?
 
-subscribe :: VNodeProxy -> Observable VNodeProxy -> Effect Unit
-subscribe vnode obs = do
-  sub <- extract (obs # subscribeNext (patch vnode))
-  pure unit
+-- foreign import createSubjectDriver :: forall a b c. Driver a b -> Driver a c
 
-domDriver :: Element -> Observable VNodeProxy -> Effect Unit
-domDriver e v = subscribe (toVNode e) v
+-- getElement :: String -> Effect (Maybe Element)
+-- getElement selector = do
+--   doc <- liftEffect $ toDocument <$> (document =<< window)
+--   element <- getElementById selector $ toNonElementParentNode doc
+--   pure element
+
+-- subscribe :: VNodeProxy -> Observable VNodeProxy -> Effect Unit
+-- subscribe vnode obs = do
+--   sub <- extract (obs # subscribeNext (patch vnode))
+--   pure unit
+
+-- domDriver :: Element -> Driver VNodeProxy (Effect VNodeProxy)
+-- domDriver e v =
+--   v
+--   # scanM patch (toVNode e)
 
 emptyVNodeData :: VNodeData
 emptyVNodeData =
@@ -117,9 +124,5 @@ app { dom: a } = let act = createActionCreator a in
   }
 
 main :: Effect Unit
-main = do
-  element <- getElement "app"
-  case element of
-    Just element -> run app (singleton "dom" (createSubjectDriver (domDriver element)))
-    Nothing -> log "Element not found"
+main = run app (singleton "dom" (createDomDriver "#app"))
 
