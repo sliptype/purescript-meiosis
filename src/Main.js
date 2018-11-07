@@ -11,18 +11,7 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 var _rxjs = require('rxjs');
 
-var _snabbdom = require('snabbdom');
-
-var _toVNode = require('snabbdom/tovnode').default;
-
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-var patch = _snabbdom.init([
-  require('snabbdom/modules/class').default, // makes it easy to toggle classes
-  require('snabbdom/modules/props').default, // for setting properties on DOM elements
-  require('snabbdom/modules/style').default, // handles styling on elements with support for animations
-  require('snabbdom/modules/eventlisteners').default, // attaches event listeners
-]);
 
 var mapObject = function mapObject(proj, o) {
   return Object.entries(o).reduce(function (result, _ref) {
@@ -73,25 +62,11 @@ exports.run = function run(main) {
   };
 };
 
-function createSubjectDriver(driver) {
+exports.createSubjectDriver = function createSubjectDriver(driver) {
   return function () {
-    driver.apply(undefined, arguments);
+    driver.apply(undefined, arguments)();
     return new _rxjs.Subject();
   };
-};
-
-exports.createSubjectDriver = createSubjectDriver;
-
-exports.createDomDriver = function createDomDriver(selector) {
-  const element = document.querySelector(selector);
-
-  return createSubjectDriver(function (view$) {
-    view$
-      .scan(function (acc, curr) {
-        return patch(acc, curr);
-      }, _toVNode(element))
-      .subscribe();
-  });
 };
 
 exports.createActionCreator = function createActionCreator(action$) {

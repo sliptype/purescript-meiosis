@@ -1,36 +1,23 @@
 module Main where
 
 import Prelude
+import RxJS.Observable
+import RxJS.Subscriber
 
 import Control.Comonad (extract)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+import Effect.Unsafe (unsafePerformEffect)
 import Foreign.Object (Object, empty, insert, singleton)
-
+import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), h, patch, patchInitialSelector, text, toVNode, toVNodeEventObject, toVNodeHookObjectProxy)
 import Web.DOM.Document (Document, toNonElementParentNode, url)
 import Web.DOM.Element (Element, id)
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.HTML (window)
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
-
-import RxJS.Observable
-import RxJS.Subscriber
-import Snabbdom
-  ( VNodeData
-  , VNodeEventObject
-  , VNodeHookObjectProxy
-  , VNodeProxy(..)
-  , h
-  , patch
-  , patchInitialSelector
-  , text
-  , toVNode
-  , toVNodeEventObject
-  , toVNodeHookObjectProxy
-  )
 
 -- TODO: Add to snabbdom
 type VNodeAttrsObject = Object String
@@ -42,8 +29,6 @@ type Driver a b = Observable a -> Observable b
 foreign import run :: forall a b. (Sources -> Sinks) -> Object (Driver a b) -> Effect Unit
 
 -- domDriver
-foreign import createDomDriver :: String -> Driver VNodeProxy Action
-
 type ActionCreator = forall e. Action -> (e -> Effect Unit)
 
 foreign import createActionCreator :: Observable Action -> ActionCreator
@@ -54,26 +39,20 @@ type Action = {
   value :: Int
 }
 
--- TODO: move into purescript
--- How to run Observable Effect ?
+getElement :: String -> Effect (Maybe Element)
+getElement selector = do
+  doc <- liftEffect $ toDocument <$> (document =<< window)
+  element <- getElementById selector $ toNonElementParentNode doc
+  pure element
 
--- foreign import createSubjectDriver :: forall a b c. Driver a b -> Driver a c
+foreign import createSubjectDriver :: forall a b. (Observable a -> Effect Unit) -> Driver a b
 
--- getElement :: String -> Effect (Maybe Element)
--- getElement selector = do
---   doc <- liftEffect $ toDocument <$> (document =<< window)
---   element <- getElementById selector $ toNonElementParentNode doc
---   pure element
-
--- subscribe :: VNodeProxy -> Observable VNodeProxy -> Effect Unit
--- subscribe vnode obs = do
---   sub <- extract (obs # subscribeNext (patch vnode))
---   pure unit
-
--- domDriver :: Element -> Driver VNodeProxy (Effect VNodeProxy)
--- domDriver e v =
---   v
---   # scanM patch (toVNode e)
+domDriver :: Element -> Observable VNodeProxy -> Effect Unit
+domDriver e v = do
+  _ <- extract $ v
+    # scan (\a b -> unsafePerformEffect $ patch b a) (toVNode e)
+    # subscribeNext pure
+  pure unit
 
 emptyVNodeData :: VNodeData
 emptyVNodeData =
@@ -95,7 +74,7 @@ type State = Int
 
 view :: ActionCreator -> State -> VNodeProxy
 view a s =
-  h "div" emptyVNodeData
+  h "div#app" emptyVNodeData
     [ h "strong#msg" emptyVNodeData [text $ "Counter: " <> (show s)]
 -- todo remove this repetition
     , h "button" { attrs: empty
@@ -119,10 +98,14 @@ app :: Sources -> Sinks
 app { dom: a } = let act = createActionCreator a in
   { dom: a
       # startWith noOp
-      # scan reducer 0
+      # scan reducer 100
       # map (view act)
   }
 
 main :: Effect Unit
-main = run app (singleton "dom" (createDomDriver "#app"))
+main = do
+  element <- getElement "app"
+  case element of
+    Just element -> run app (singleton "dom" $ createSubjectDriver (domDriver element))
+    Nothing -> log "Element not found"
 
