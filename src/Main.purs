@@ -1,85 +1,23 @@
 module Main where
 
 import Prelude
-import RxJS.Observable
-import RxJS.Subscriber
+import RxJS.Observable (Observable, scan, startWith)
 
-import Control.Comonad (extract)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Class (liftEffect)
-import Effect.Console (log)
-import Effect.Unsafe (unsafePerformEffect)
-import Foreign.Object (Object, empty, insert, singleton)
-import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), h, patch, patchInitialSelector, text, toVNode, toVNodeEventObject, toVNodeHookObjectProxy)
-import Web.DOM.Document (Document, toNonElementParentNode, url)
-import Web.DOM.Element (Element, id)
-import Web.DOM.NonElementParentNode (getElementById)
-import Web.HTML (window)
-import Web.HTML.HTMLDocument (toDocument)
-import Web.HTML.Window (document)
-
--- TODO: Add to snabbdom
-type VNodeAttrsObject = Object String
+import Foreign.Object (empty, singleton)
+import Meiosis (ActionCreator, run, createActionCreator, createDomDriver, emptyVNodeData)
+import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), h, text, toVNodeEventObject, toVNodeHookObjectProxy)
 
 type Sinks = { dom :: Observable VNodeProxy }
 type Sources = { dom :: Observable Action }
-type Driver a b = Observable a -> Observable b
 
-foreign import run :: forall a b. (Sources -> Sinks) -> Object (Driver a b) -> Effect Unit
+type State = Int
 
--- domDriver
-type ActionCreator = forall e. Action -> (e -> Effect Unit)
-
-foreign import createActionCreator :: Observable Action -> ActionCreator
-
--- TODO: dynamic action types
 type Action = {
   name :: String,
   value :: Int
 }
-
-getElement :: String -> Effect (Maybe Element)
-getElement selector = do
-  doc <- liftEffect $ toDocument <$> (document =<< window)
-  element <- getElementById selector $ toNonElementParentNode doc
-  pure element
-
-foreign import createSubjectDriver :: forall a b. (Observable a -> Effect Unit) -> Driver a b
-
-domDriver :: Maybe Element -> Observable VNodeProxy -> Effect Unit
-domDriver e v = do
-  case e of
-    Just (element) -> do
-      _ <- extract $ v
-        # scan (\a b -> unsafePerformEffect $ patch b a) (toVNode element)
-        # subscribeNext pure
-      pure unit
-    Nothing -> do
-      log "Element could not be found by id"
-
-createDomDriver :: String -> Effect (Driver VNodeProxy Action)
-createDomDriver id = do
-  element <- getElement "app"
-  pure $ createSubjectDriver $ domDriver element
-
-emptyVNodeData :: VNodeData
-emptyVNodeData =
-  { attrs : empty
-  , on : toVNodeEventObject empty
-  , hook : toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
-  }
-
-createVNodeData :: VNodeAttrsObject -> VNodeEventObject -> VNodeHookObjectProxy -> VNodeData
-createVNodeData attrs events hooks =
-  { attrs : attrs
-  , on : events
-  , hook : hooks
-  }
-
--- userland
-
-type State = Int
 
 view :: ActionCreator -> State -> VNodeProxy
 view a s =
@@ -102,6 +40,7 @@ noOp =
   { name: "noop"
   , value: 0
 }
+
 
 app :: Sources -> Sinks
 app { dom: a } = let act = createActionCreator a in
