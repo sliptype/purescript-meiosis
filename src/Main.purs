@@ -47,12 +47,21 @@ getElement selector = do
 
 foreign import createSubjectDriver :: forall a b. (Observable a -> Effect Unit) -> Driver a b
 
-domDriver :: Element -> Observable VNodeProxy -> Effect Unit
+domDriver :: Maybe Element -> Observable VNodeProxy -> Effect Unit
 domDriver e v = do
-  _ <- extract $ v
-    # scan (\a b -> unsafePerformEffect $ patch b a) (toVNode e)
-    # subscribeNext pure
-  pure unit
+  case e of
+    Just (element) -> do
+      _ <- extract $ v
+        # scan (\a b -> unsafePerformEffect $ patch b a) (toVNode element)
+        # subscribeNext pure
+      pure unit
+    Nothing -> do
+      log "Element could not be found by id"
+
+createDomDriver :: String -> Effect (Driver VNodeProxy Action)
+createDomDriver id = do
+  element <- getElement "app"
+  pure $ createSubjectDriver $ domDriver element
 
 emptyVNodeData :: VNodeData
 emptyVNodeData =
@@ -104,8 +113,6 @@ app { dom: a } = let act = createActionCreator a in
 
 main :: Effect Unit
 main = do
-  element <- getElement "app"
-  case element of
-    Just element -> run app (singleton "dom" $ createSubjectDriver (domDriver element))
-    Nothing -> log "Element not found"
+  d <- createDomDriver "app"
+  run app (singleton "dom" d)
 
