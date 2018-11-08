@@ -1,42 +1,58 @@
 module Main where
 
 import Prelude
-import Effect (Effect)
-import Control.Comonad (extract)
+import RxJS.Observable (Observable, scan, startWith)
+
 import Data.Maybe (Maybe(..))
-import Data.Map (empty)
-import Snabbdom (VNodeProxy, VNodeData, h, patchInitialSelector, patch, text, toVNodeEventObject, toVNodeHookObjectProxy)
-import RxJS.Observable
+import Effect (Effect)
+import Foreign.Object (empty, singleton)
+import Meiosis (run)
+import Meiosis.Dom (ActionCreator, createActionCreator, createDomDriver, emptyVNodeData)
+import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), h, text, toVNodeEventObject, toVNodeHookObjectProxy)
+
+type Sinks = { dom :: Observable VNodeProxy }
+type Sources = { dom :: Observable Action }
 
 type State = Int
 
-emptyVNodeData :: VNodeData
-emptyVNodeData =
-  { attrs : empty
-  , on : toVNodeEventObject empty
-  , hook : toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
-  }
+type Action = {
+  name :: String,
+  value :: Int
+}
 
-initialState :: State
-initialState = 10
-
-state :: Observable State
-state = interval 1000 # map (\s -> initialState + s)
-
-view :: State -> VNodeProxy
-view s = h "div" emptyVNodeData
-  [ h "strong#msg" emptyVNodeData [text $ "Counter: " <> (show s)]
-  , h "button" emptyVNodeData [text "Increase"]
+view :: ActionCreator -> State -> VNodeProxy
+view a s =
+  h "div#app" emptyVNodeData
+    [ h "strong#msg" emptyVNodeData [text $ "Counter: " <> (show s)]
+-- todo remove this repetition
+    , h "button" { attrs: empty
+                 , on: toVNodeEventObject $ singleton "click" (a { name: "increase"
+                                            , value: 1
+                                            })
+                 , hook: toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
+                 } [text "Increase"]
   ]
+
+reducer :: Action -> State -> State
+reducer _a s = s + 1
+
+noOp :: Action
+noOp =
+  { name: "noop"
+  , value: 0
+}
+
+
+app :: Sources -> Sinks
+app { dom: a } = let act = createActionCreator a in
+  { dom: a
+      # startWith noOp
+      # scan reducer 100
+      # map (view act)
+  }
 
 main :: Effect Unit
 main = do
-  -- Render the initial state
-  vnode <- patchInitialSelector "#app" $ view initialState
-  -- Map state to view and attach a handler to re-render
-  state # map view # subscribe vnode
+  d <- createDomDriver "app"
+  run app (singleton "dom" d)
 
-subscribe :: VNodeProxy -> Observable VNodeProxy -> Effect Unit
-subscribe vnode obs = do
-  sub <- extract (obs # subscribeNext (patch vnode))
-  pure unit
