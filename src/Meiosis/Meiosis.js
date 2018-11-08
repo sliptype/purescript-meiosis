@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.createActionCreator = exports.createSubjectDriver = exports.run = undefined;
+exports.createSubjectDriver = exports.run = undefined;
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
@@ -66,15 +66,5 @@ exports.createSubjectDriver = function createSubjectDriver(driver) {
   return function () {
     driver.apply(undefined, arguments)();
     return new _rxjs.Subject();
-  };
-};
-
-exports.createActionCreator = function createActionCreator(action$) {
-  return function (action) {
-    return function (event) {
-      return function () {
-        return action$.next(action);
-      };
-    };
   };
 };

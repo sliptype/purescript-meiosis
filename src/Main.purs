@@ -6,7 +6,8 @@ import RxJS.Observable (Observable, scan, startWith)
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Foreign.Object (empty, singleton)
-import Meiosis (ActionCreator, run, createActionCreator, createDomDriver, emptyVNodeData)
+import Meiosis (run)
+import Meiosis.Dom (ActionCreator, createActionCreator, createDomDriver, emptyVNodeData)
 import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), h, text, toVNodeEventObject, toVNodeHookObjectProxy)
 
 type Sinks = { dom :: Observable VNodeProxy }
