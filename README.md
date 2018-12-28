@@ -16,5 +16,6 @@ yarn install
 pulp --watch browserify --to app.js
 ```
 
-Then open `index.html`
-
+```
+open -a "Google Chrome" index.html
+```
