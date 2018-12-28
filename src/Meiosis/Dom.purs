@@ -1,7 +1,6 @@
 module Meiosis.Dom
   ( ActionCreator
   , createActionCreator
-  , emptyVNodeData
   , createDomDriver
   ) where
 
@@ -14,16 +13,16 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
 import Foreign.Object (Object, empty)
+import Meiosis (Driver, createSubjectDriver)
 import RxJS.Observable (Observable, scan, subscribeNext)
-import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy, patch, toVNode, toVNodeEventObject, toVNodeHookObjectProxy)
+import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), patch, toVNode, toVNodeEventObject, toVNodeHookObjectProxy)
+import Snabbdom (h) as Snabbdom
 import Web.DOM.Document (toNonElementParentNode)
 import Web.DOM.Element (Element)
 import Web.DOM.NonElementParentNode (getElementById)
 import Web.HTML (window)
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
-
-import Meiosis (Driver, createSubjectDriver)
 
 -- TODO: Add to snabbdom
 type VNodeAttrsObject = Object String
@@ -53,17 +52,3 @@ createDomDriver :: forall a. String -> Effect (Driver VNodeProxy a)
 createDomDriver id = do
   element <- getElement "app"
   pure $ createSubjectDriver $ domDriver element
-
-emptyVNodeData :: VNodeData
-emptyVNodeData =
-  { attrs : empty
-  , on : toVNodeEventObject empty
-  , hook : toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
-  }
-
-createVNodeData :: VNodeAttrsObject -> VNodeEventObject -> VNodeHookObjectProxy -> VNodeData
-createVNodeData attrs events hooks =
-  { attrs : attrs
-  , on : events
-  , hook : hooks
-  }

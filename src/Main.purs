@@ -7,8 +7,9 @@ import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Foreign.Object (empty, singleton)
 import Meiosis (run)
-import Meiosis.Dom (ActionCreator, createActionCreator, createDomDriver, emptyVNodeData)
-import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), h, text, toVNodeEventObject, toVNodeHookObjectProxy)
+import Meiosis.Dom (ActionCreator, createActionCreator, createDomDriver)
+import Snabbdom (VNodeData, VNodeEventObject, VNodeHookObjectProxy, VNodeProxy(..), toVNodeEventObject, toVNodeHookObjectProxy)
+import SnabbdomHelpers (h, sel, props, on, children, text)
 
 type Sinks = { dom :: Observable VNodeProxy }
 type Sources = { dom :: Observable Action }
@@ -22,16 +23,14 @@ type Action = {
 
 view :: ActionCreator -> State -> VNodeProxy
 view a s =
-  h "div#app" emptyVNodeData
-    [ h "strong#msg" emptyVNodeData [text $ "Counter: " <> (show s)]
--- todo remove this repetition
-    , h "button" { attrs: empty
-                 , on: toVNodeEventObject $ singleton "click" (a { name: "increase"
-                                            , value: 1
-                                            })
-                 , hook: toVNodeHookObjectProxy { insert : Nothing, update : Nothing, destroy : Nothing }
-                 } [text "Increase"]
-  ]
+  h # sel "div#app"
+    # children
+    [ h # sel "strong#msg"
+        # children [text $ "Counter: " <> (show s)]
+    , h # sel "button"
+        # on (singleton "click" (a { name: "increase", value: 1}))
+        # children [text "Increase"]
+    ]
 
 reducer :: Action -> State -> State
 reducer _a s = s + 1
@@ -41,7 +40,6 @@ noOp =
   { name: "noop"
   , value: 0
 }
-
 
 app :: Sources -> Sinks
 app { dom: a } = let act = createActionCreator a in

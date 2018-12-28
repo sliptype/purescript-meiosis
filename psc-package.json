@@ -1,8 +1,9 @@
 {
   "name": "purescript-meiosis",
-  "set": "0.12.0-20181101",
+  "set": "0.12.0-20181228",
   "source": "https://github.com/sliptype/package-sets.git",
   "depends": [
+    "snabbdom-helpers",
     "foreign-object",
     "control",
     "rxps",
